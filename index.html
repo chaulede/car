@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chinese Learning Police Chase - Two-Way Traffic</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #558833;
+            font-family: Arial, sans-serif;
+            user-select: none;
+        }
+        /* 左侧主 UI 面板 */
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 14px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border-left: 4px solid #0055ff;
+            width: 280px;
+        }
+        #ui div {
+            margin-bottom: 6px;
+        }
+        /* 关卡选择下拉菜单样式 */
+        #levelSelectContainer {
+            margin-top: 4px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #levelSelect {
+            flex: 1;
+            padding: 5px 6px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 1px solid #0055ff;
+            border-radius: 4px;
+            background: #f0f4ff;
+            color: #0055ff;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #chatInputContainer {
+            margin-top: 6px;
+            display: flex;
+            gap: 5px;
+        }
+        #chatInput {
+            flex: 1;
+            padding: 5px 8px;
+            font-size: 13px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+        }
+        #chatSubmit {
+            padding: 5px 10px;
+            font-size: 13px;
+            background: #0055ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #chatSubmit:hover {
+            background: #0040cc;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            text-shadow: 1px 1px 3px black;
+            pointer-events: none;
+        }
+        /* 右侧汉字学习卡片：精确定位在屏幕右侧正中央 */
+        #kanjiPopup {
+            display: none;
+            position: absolute;
+            top: 50%;
+            right: 30px;
+            transform: translateY(-50%) scale(0.9);
+            background: rgba(255, 255, 255, 0.96);
+            padding: 18px 28px;
+            border-radius: 22px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+            border: 6px solid #ffcc00;
+            text-align: center;
+            z-index: 900;
+            pointer-events: none;
+            transition: transform 0.2s ease;
+        }
+        #kanjiLessonTag {
+            background: #0055ff;
+            color: white;
+            font-size: 13px;
+            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+        #kanjiPinyin {
+            color: #0055ff;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        #kanjiChar {
+            color: #000;
+            font-size: 90px; 
+            font-weight: bold;
+            line-height: 1;
+            margin: 4px 0;
+        }
+        #kanjiEnglish {
+            color: #ff6600;
+            font-size: 17px;
+            font-weight: bold;
+            margin-top: 6px;
+            text-transform: capitalize;
+            max-width: 240px;
+            word-wrap: break-word;
+        }
+
+        /* 屏幕中央的全自动过关提示弹窗样式 */
+        #modalBox {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98);
+            padding: 30px 45px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            border: 5px solid #ffaa00;
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 450px;
+        }
+        #modalBox h1 {
+            color: #ff6600;
+            font-size: 32px;
+            margin: 0 0 10px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        #modalBox h2 {
+            color: #0055ff;
+            font-size: 22px;
+            margin: 0 0 12px 0;
+        }
+        #modalBox p {
+            color: #333;
+            font-size: 15px;
+            margin: 0;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div>🎯 Score: <span id="score" style="color: #ff6600; font-size: 16px;">0</span> / 100 (Word <span id="wordCount">0</span>/10)</div>
+        <div>🛡️ Lives: <span id="lives" style="color: #cc0000; font-size: 16px;">10</span> / 10</div>
+        <div>Speed: <span id="speed" style="color: #0055ff;">0</span> km/h</div>
+        
+        <!-- 课文关卡选择下拉菜单 -->
+        <div id="levelSelectContainer">
+            <label for="levelSelect" style="font-size: 13px; color: #333;">📖 Select:</label>
+            <select id="levelSelect"></select>
+        </div>
+        
+        <!-- 输入汉字对话框 -->
+        <div id="chatInputContainer">
+            <input type="text" id="chatInput" placeholder="Type Chinese word..." />
+            <button id="chatSubmit">Speak</button>
+        </div>
+    </div>
+
+    <!-- 屏幕右侧中间大字版吃汉字卡片 -->
+    <div id="kanjiPopup">
+        <div id="kanjiLessonTag"></div>
+        <div id="kanjiPinyin"></div>
+        <div id="kanjiChar"></div>
+        <div id="kanjiEnglish"></div>
+    </div>
+
+    <!-- 屏幕中央的全自动提示弹窗 -->
+    <div id="modalBox">
+        <h1 id="modalTitle">🏆 闯关成功！</h1>
+        <h2 id="modalSubtitle">Level Cleared!</h2>
+        <p id="modalDesc">Auto-advancing to next lesson...</p>
+    </div>
+
+    <div id="instructions">Controls: [W / S or Up / Down] Accelerate / Brake | [A / D or Left / Right] Change Lanes</div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 引入专业汉字转拼音库 pinyin-pro -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pinyin-pro/3.16.0/index.js"></script>
+
+    <script>
+        // --- 0. 音频与按课时划分的分关词库体系 ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playCrashSound() {
+            initAudio();
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gainNode = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function playWinSound() {
+            initAudio();
+            if (!audioCtx) return;
+            let notes = [523.25, 659.25, 783.99]; 
+            notes.forEach((freq, index) => {
+                let osc = audioCtx.createOscillator();
+                let gainNode = audioCtx.createGain();
+                osc.type = 'sine'; 
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.08);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + index * 0.08);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + index * 0.08 + 0.2);
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + index * 0.08);
+                osc.stop(audioCtx.currentTime + index * 0.08 + 0.2);
+            });
+        }
+
+        function speakChineseWord(word) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); 
+                let utterance = new SpeechSynthesisUtterance(word);
+                utterance.lang = 'zh-CN'; 
+                utterance.rate = 0.7;   
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // 按课时严格划分的关卡数据列表（共 14 关）
+        const levelsData = [
+            // 1A
+            { title: "1A - Lesson 1", words: { "一": "one", "二": "two", "三": "three", "四": "four", "五": "five" } },
+            { title: "1A - Lesson 2", words: { "六": "six", "七": "seven", "八": "eight", "九": "nine", "十": "ten" } },
+            { title: "1A - Lesson 3", words: { "十一": "eleven", "十二": "twelve", "十三": "thirteen", "十四": "fourteen", "十五": "fifteen", "十六": "sixteen", "十七": "seventeen", "十八": "eighteen", "十九": "nineteen", "二十": "twenty" } },
+            { title: "1A - Lesson 4", words: { "你": "you", "您": "you (respectfully)", "好": "good", "老师": "teacher", "再见": "good-bye", "王": "a surname; king" } },
+            { title: "1A - Lesson 5", words: { "谢谢你": "thank you", "不客气": "you're welcome", "对不起": "I'm sorry", "没关系": "never mind" } },
+            { title: "1A - Lesson 6", words: { "我": "I; me", "叫": "call", "什么": "what", "名字": "name" } },
+            { title: "1A - Lesson 7", words: { "岁": "age", "几": "how many", "上一年级": "attend Grade One", "都": "both; all", "医生": "doctor", "加": "add", "等于": "equal" } },
+            
+            // 1B
+            { title: "1B - Lesson 1", words: { "爸爸": "dad", "妈妈": "mum", "爱": "love; like" } },
+            { title: "1B - Lesson 2", words: { "哥哥": "elder brother", "姐姐": "elder sister", "弟弟": "younger brother", "妹妹": "younger sister", "有": "have" } },
+            { title: "1B - Lesson 3", words: { "我的": "my", "眼睛": "eye", "鼻子": "nose", "嘴巴": "mouth", "耳朵": "ear" } },
+            { title: "1B - Lesson 4", words: { "头": "head", "头发": "hair", "手": "hand", "脚": "foot", "和": "and" } },
+            { title: "1B - Lesson 5", words: { "喜欢": "like", "猫": "cat", "狗": "dog", "鱼": "fish", "金鱼": "goldfish", "的": "‘s; of", "小": "small; little" } },
+            { title: "1B - Lesson 6", words: { "红色": "red", "黄色": "yellow", "蓝色": "blue", "绿色": "green" } },
+            { title: "1B - Lesson 7", words: { "吃": "eat", "苹果": "apple", "香蕉": "banana", "草莓": "stawberry", "葡萄": "grape" } }
+        ];
+
+        let currentLevelIndex = 0; // 当前关卡索引 (0 ~ 13)
+        let isLevelTransitioning = false; // 关卡过渡状态锁
+        let badCarTargetOffset = 18; // 警车与红车的追逐距离
+
+        // 初始化下拉菜单选项
+        const levelSelect = document.getElementById('levelSelect');
+        levelsData.forEach((lvl, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.innerText = lvl.title;
+            levelSelect.appendChild(opt);
+        });
+
+        // 监听下拉菜单切换关卡事件
+        levelSelect.addEventListener('change', (e) => {
+            currentLevelIndex = parseInt(e.target.value);
+            resetGameForNextLevel();
+        });
+
+        function getCurrentLevelDict() {
+            return levelsData[currentLevelIndex].words;
+        }
+
+        let popupTimer = null;
+        function showKanjiPopup(word) {
+            let computedPinyin = pinyinPro.pinyin(word, { toneType: 'symbol' });
+            let currentDict = getCurrentLevelDict();
+            let englishMeaning = currentDict[word] || "custom word";
+            let lessonTag = levelsData[currentLevelIndex].title;
+            
+            document.getElementById('kanjiLessonTag').innerText = lessonTag;
+            document.getElementById('kanjiPinyin').innerText = computedPinyin;
+            document.getElementById('kanjiChar').innerText = word;
+            document.getElementById('kanjiEnglish').innerText = englishMeaning;
+
+            const popup = document.getElementById('kanjiPopup');
+            popup.style.display = 'block';
+            popup.style.transform = 'translateY(-50%) scale(1.1)';
+            setTimeout(() => {
+                popup.style.transform = 'translateY(-50%) scale(1.0)';
+            }, 100);
+
+            if (popupTimer) clearTimeout(popupTimer);
+            popupTimer = setTimeout(() => {
+                popup.style.display = 'none';
+            }, 1400); 
+        }
+
+        // 输入框逻辑
+        document.getElementById('chatSubmit').addEventListener('click', handleUserChatInput);
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleUserChatInput();
+            }
+            e.stopPropagation();
+        });
+
+        function handleUserChatInput() {
+            const inputField = document.getElementById('chatInput');
+            const val = inputField.value.trim();
+            if (val.length > 0) {
+                let targetWord = val;
+                let currentDict = getCurrentLevelDict();
+                if (!currentDict[targetWord]) {
+                    currentDict[targetWord] = "custom word";
+                }
+
+                speakChineseWord(targetWord);
+                showKanjiPopup(targetWord);
+                inputField.value = '';
+            }
+        }
+
+        // 自动晋级到下一关的核心逻辑
+        function autoAdvanceToNextLevel() {
+            currentLevelIndex = (currentLevelIndex + 1) % levelsData.length;
+            levelSelect.value = currentLevelIndex; // 同步下拉菜单选项
+            resetGameForNextLevel();
+        }
+
+        function resetGameForNextLevel() {
+            isGameOver = false; 
+            wordCount = 0;
+            score = 0;
+            policeSpeed = 0;
+            badCarTargetOffset = 18;
+            document.getElementById('score').innerText = score;
+            document.getElementById('wordCount').innerText = wordCount;
+            
+            // 同步更新下拉菜单选中状态
+            levelSelect.value = currentLevelIndex;
+
+            // 1. 车辆完美复位并拉开追逐距离
+            if (typeof policeCar !== 'undefined' && typeof badCar !== 'undefined') {
+                policeCar.position.set(3.5, 0, 0);
+                policeCar.rotation.set(0, 0, 0);
+                badCar.position.set(3.5, 0, -18);
+                badCar.rotation.set(0, 0, 0);
+            }
+            
+            // 2. 清空并重置障碍车辆数组
+            if (typeof obstacleCars !== 'undefined' && obstacleCars.length > 0) {
+                obstacleCars.forEach(obs => scene.remove(obs));
+                obstacleCars.length = 0;
+            }
+
+            // 3. 完美重置无限道路网段（roadSegments）的 Z 轴坐标
+            if (typeof roadSegments !== 'undefined' && roadSegments.length > 0) {
+                roadSegments.forEach((seg, index) => {
+                    seg.position.z = -index * segmentLength;
+                });
+            }
+
+            // 4. 完美重置道路两旁的树木风景（sceneryObjects）
+            if (typeof sceneryObjects !== 'undefined' && sceneryObjects.length > 0) {
+                sceneryObjects.forEach((obj, index) => {
+                    let baseZ = -Math.floor(index / 2) * 25;
+                    obj.trunk.position.z = baseZ;
+                    obj.leaves.position.z = baseZ;
+                });
+            }
+
+            // 清除旧字块
+            if (typeof kanjiBlocks !== 'undefined') {
+                kanjiBlocks.forEach(b => scene.remove(b));
+                kanjiBlocks.length = 0;
+            }
+
+            // 隐藏过关弹窗，正式解锁操作，继续开始新一关
+            document.getElementById('modalBox').style.display = 'none';
+            isLevelTransitioning = false;
+        }
+
+        window.addEventListener('keydown', () => initAudio(), { once: true });
+        window.addEventListener('click', () => initAudio(), { once: true });
+
+        // --- 1. Scene & Environment Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x76b425); 
+        scene.fog = new THREE.FogExp2(0x87ceeb, 0.005); 
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xfffaed, 1.2);
+        dirLight.position.set(30, 60, 30);
+        scene.add(dirLight);
+
+        // --- 2. Infinite Road System ---
+        const textureLoader = new THREE.TextureLoader();
+        const segmentLength = 400; 
+        const roadSegments = [];
+
+        const roadMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
+        textureLoader.load('map_bg.png', (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            roadMat.map = texture;
+            roadMat.needsUpdate = true;
+        }, undefined, () => {});
+
+        for (let i = 0; i < 3; i++) {
+            const roadGroup = new THREE.Group();
+            const road = new THREE.Mesh(new THREE.PlaneGeometry(16, segmentLength), roadMat);
+            road.rotation.x = -Math.PI / 2;
+            roadGroup.add(road);
+
+            const line = new THREE.Mesh(new THREE.PlaneGeometry(0.3, segmentLength), new THREE.MeshBasicMaterial({ color: 0xffcc00 }));
+            line.rotation.x = -Math.PI / 2;
+            line.position.y = 0.03;
+            roadGroup.add(line);
+
+            roadGroup.position.z = -i * segmentLength;
+            scene.add(roadGroup);
+            roadSegments.push(roadGroup);
+        }
+
+        const treeMat = new THREE.MeshStandardMaterial({ color: 0x225511, roughness: 0.8 });
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+        const sceneryObjects = [];
+
+        for (let i = 0; i < 40; i++) {
+            let zPos = -i * 25;
+            [-12, 12].forEach(baseX => {
+                let xPos = baseX + (Math.random() - 0.5) * 3;
+                let trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 2), trunkMat);
+                trunk.position.set(xPos, 1, zPos);
+                let leaves = new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 5), treeMat);
+                leaves.position.set(xPos, 4, zPos);
+                scene.add(trunk, leaves);
+                sceneryObjects.push({ trunk, leaves, baseZ: zPos });
+            });
+        }
+
+        // --- 3. 3D Car Factory ---
+        function createDetailedCar(imageFileName, defaultColor, isPolice) {
+            const carGroup = new THREE.Group();
+            carGroup.userData = { wheels: [] }; 
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: defaultColor, roughness: 0.15, metalness: 0.85 });
+            if (imageFileName) {
+                textureLoader.load(imageFileName, (texture) => {
+                    texture.colorSpace = THREE.SRGBColorSpace;
+                    bodyMat.map = texture;
+                    bodyMat.needsUpdate = true;
+                }, undefined, () => {});
+            }
+
+            const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.55, 5.6), bodyMat);
+            lowerBody.position.y = 0.45;
+            carGroup.add(lowerBody);
+
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.05, metalness: 0.9 });
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 2.6), cabinMat);
+            cabin.position.set(0, 0.95, -0.1);
+            carGroup.add(cabin);
+
+            const spoilerMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.8 });
+            const spoilerWing = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.5), spoilerMat);
+            spoilerWing.position.set(0, 1.05, -2.5);
+            const spoilerLegL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.25, 0.12), spoilerMat);
+            spoilerLegL.position.set(-0.9, 0.9, -2.5);
+            const spoilerLegR = spoilerLegL.clone();
+            spoilerLegR.position.x = 0.9;
+            carGroup.add(spoilerWing, spoilerLegL, spoilerLegR);
+
+            const tireMat = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.9 });
+            const rimMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.2 });
+            const tireGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.42, 24);
+            tireGeo.rotateZ(Math.PI / 2);
+            const rimGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.44, 16);
+            rimGeo.rotateZ(Math.PI / 2);
+
+            [[-1.35, 0.5, 1.6], [1.35, 0.5, 1.6], [-1.35, 0.5, -1.6], [1.35, 0.5, -1.6]].forEach(pos => {
+                const wg = new THREE.Group();
+                wg.add(new THREE.Mesh(tireGeo, tireMat), new THREE.Mesh(rimGeo, rimMat));
+                wg.position.set(...pos);
+                carGroup.add(wg);
+                carGroup.userData.wheels.push(wg);
+            });
+
+            const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffee });
+            const tlMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+            const lightGeo = new THREE.BoxGeometry(0.45, 0.15, 0.1);
+            const hlLeft = new THREE.Mesh(lightGeo, hlMat); hlLeft.position.set(-0.85, 0.48, 2.82);
+            const hlRight = hlLeft.clone(); hlRight.position.x = 0.85;
+            const tlLeft = new THREE.Mesh(lightGeo, tlMat); tlLeft.position.set(-0.85, 0.48, -2.82);
+            const tlRight = tlLeft.clone(); tlRight.position.x = 0.85;
+            carGroup.add(hlLeft, hlRight, tlLeft, tlRight);
+
+            if (isPolice) {
+                const barMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+                const bar = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.15, 0.35), barMat);
+                bar.position.set(0, 1.25, 0);
+                carGroup.add(bar);
+
+                const rMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const bMat = new THREE.MeshBasicMaterial({ color: 0x0044ff });
+                const rLight = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.25), rMat); rLight.position.set(-0.25, 1.36, 0); rLight.name = "sirenRed";
+                const bLight = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.25), bMat); bLight.position.set(0.25, 1.36, 0); bLight.name = "sirenBlue";
+                carGroup.add(rLight, bLight);
+            }
+
+            scene.add(carGroup);
+            return carGroup;
+        }
+
+        const policeCar = createDetailedCar('police_car.png', 0x0055ff, true);
+        policeCar.position.set(3.5, 0, 0);
+
+        const badCar = createDetailedCar('bad_car.png', 0xcc0000, false);
+        badCar.position.set(3.5, 0, -18); // 初始化红车在警车前方 18 米
+
+        const sirenRed = policeCar.getObjectByName("sirenRed");
+        const sirenBlue = policeCar.getObjectByName("sirenBlue");
+
+        // --- 4. Colorful Obstacle Cars (双向交通：右侧同向，左侧逆向) ---
+        const obstacleCars = [];
+        const vibrantColors = [0x00ffcc, 0xff0066, 0x00ffff, 0xff9900, 0x9900ff, 0xff00ff, 0x00ff66, 0xffff00];
+
+        function spawnObstacleCar() {
+            if (isGameOver || isLevelTransitioning) return;
+            const col = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
+            const obsGroup = createDetailedCar(null, col, false);
+            
+            // 随机分配车道：右侧车道 (+3.5) 或 左侧车道 (-3.5)
+            const isLeftLane = Math.random() < 0.5;
+            const laneX = isLeftLane ? -3.5 : 3.5;
+
+            if (isLeftLane) {
+                // 左侧车道：逆向行驶（迎面开来）
+                obsGroup.position.set(laneX, 0, policeCar.position.z - 120 - Math.random() * 50);
+                obsGroup.rotation.y = Math.PI; // 车头朝向后方（迎面朝警车开来）
+                obsGroup.userData.isInverse = true;
+                obsGroup.userData.speed = 0.5 + Math.random() * 0.3; // 迎面车速较快
+            } else {
+                // 右侧车道：同向行驶（向前开，可超越）
+                obsGroup.position.set(laneX, 0, policeCar.position.z - 120 - Math.random() * 50);
+                obsGroup.rotation.y = 0; // 车头朝向前方
+                obsGroup.userData.isInverse = false;
+                obsGroup.userData.speed = 0.35 + Math.random() * 0.2; // 同向车速
+            }
+
+            scene.add(obsGroup);
+            obstacleCars.push(obsGroup);
+        }
+
+        setInterval(spawnObstacleCar, 2800);
+
+        // --- 5. HD Chinese Learning Word Blocks (Strictly current level words) ---
+        const kanjiBlocks = []; 
+        let lastCrashTime = 0; 
+        let crashAnimTimer = 0; 
+
+        function spawnKanjiBlock() {
+            if (isGameOver || isLevelTransitioning) return;
+            const currentDict = getCurrentLevelDict();
+            const keys = Object.keys(currentDict);
+            if (keys.length === 0) return;
+            const word = keys[Math.floor(Math.random() * keys.length)];
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffcc00'; 
+            ctx.fillRect(0, 0, 512, 512);
+            ctx.fillStyle = '#000000'; 
+            ctx.font = 'bold 280px Arial'; 
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(word, 256, 256);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.generateMipmaps = true;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            
+            const mat = new THREE.MeshBasicMaterial({ map: texture });
+            
+            const blockMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.0, 2.0), [mat, mat, mat, mat, mat, mat]);
+            blockMesh.position.set(3.5, 0.9, badCar.position.z - 2); 
+            blockMesh.userData = { word: word };
+            
+            scene.add(blockMesh);
+            kanjiBlocks.push(blockMesh);
+        }
+
+        setInterval(spawnKanjiBlock, 1800);
+
+        // --- 6. Controls & Game Main Loop ---
+        const keys = { w: false, s: false, a: false, d: false };
+        let policeSpeed = 0;       
+        const maxSpeed = 0.85;     
+        const acceleration = 0.015;
+        const brakePower = 0.035;  
+        const friction = 0.008;    
+
+        let score = 0;             
+        let wordCount = 0;         
+        let lives = 10;            
+        let isGameOver = false;
+        let sirenTimer = 0;
+        let sirenState = true;
+
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement.id === 'chatInput') return;
+            handleKey(e, true);
+        });
+        window.addEventListener('keyup', (e) => {
+            if (document.activeElement.id === 'chatInput') return;
+            handleKey(e, false);
+        });
+
+        function handleKey(e, isDown) {
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': keys.w = isDown; break;
+                case 's': case 'arrowdown': keys.s = isDown; break;
+                case 'a': case 'arrowleft': keys.a = isDown; break;
+                case 'd': case 'arrowright': keys.d = isDown; break;
+            }
+        }
+
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            let dt = clock.getDelta();
+
+            if (!isGameOver && !isLevelTransitioning) {
+                if (keys.w) {
+                    policeSpeed = Math.min(policeSpeed + acceleration, maxSpeed); 
+                } else if (keys.s) {
+                    policeSpeed = Math.max(policeSpeed - brakePower, 0);           
+                } else {
+                    if (policeSpeed > 0) policeSpeed = Math.max(0, policeSpeed - friction);
+                }
+
+                let steerSpeed = 0.25 * (policeSpeed / maxSpeed + 0.3);
+                if (keys.a) policeCar.position.x -= steerSpeed;
+                if (keys.d) policeCar.position.x += steerSpeed;
+
+                policeCar.position.x = Math.max(-6.0, Math.min(6.0, policeCar.position.x));
+                policeCar.position.z -= policeSpeed;
+
+                // 核心追逐逻辑：红车（badCar）始终在警车前方固定距离处，并平滑跟随警车左右变道
+                badCar.position.z = policeCar.position.z - badCarTargetOffset;
+                badCar.position.x += (policeCar.position.x - badCar.position.x) * 0.1;
+
+                // --- 💥 警车撞击红色嫌疑人车辆（badCar）的互动物理逻辑 ---
+                let distToBadCar = policeCar.position.distanceTo(badCar.position);
+                if (distToBadCar < 3.2) {
+                    let now = clock.getElapsedTime();
+                    if (now - lastCrashTime > 0.5) {
+                        playCrashSound();
+                        lastCrashTime = now;
+                        crashAnimTimer = 0.4; // 触发撞击震动动画
+                        
+                        // 撞击时红车被向前撞飞加速，拉开一段距离
+                        badCarTargetOffset += 6; 
+                        if (badCarTargetOffset > 30) badCarTargetOffset = 30;
+
+                        // 警车受到轻微反弹减速
+                        policeSpeed *= 0.5;
+                    }
+                } else {
+                    if (badCarTargetOffset > 18) {
+                        badCarTargetOffset -= dt * 3;
+                    }
+                }
+
+                // --- 🚗 车辆撞击翻车/撞歪动画处理 ---
+                if (crashAnimTimer > 0) {
+                    crashAnimTimer -= dt;
+                    policeCar.rotation.z = Math.sin(crashAnimTimer * 25) * 0.35; 
+                    policeCar.rotation.x = Math.cos(crashAnimTimer * 20) * 0.2;  
+                    policeCar.position.y = 0.3 + Math.sin(crashAnimTimer * 30) * 0.4; 
+                } else {
+                    policeCar.rotation.z += (0 - policeCar.rotation.z) * 0.1;
+                    policeCar.rotation.x += (0 - policeCar.rotation.x) * 0.1;
+                    policeCar.position.y += (0 - policeCar.position.y) * 0.1;
+                }
+
+                // Infinite Road Loop
+                roadSegments.forEach(seg => {
+                    if (seg.position.z > policeCar.position.z + segmentLength) {
+                        seg.position.z -= segmentLength * roadSegments.length;
+                    }
+                });
+
+                sceneryObjects.forEach(obj => {
+                    if (obj.trunk.position.z > policeCar.position.z + 20) {
+                        obj.trunk.position.z -= 1000;
+                        obj.leaves.position.z -= 1000;
+                    }
+                });
+
+                // 双向交通障碍车辆移动与碰撞逻辑
+                for (let i = obstacleCars.length - 1; i >= 0; i--) {
+                    let obs = obstacleCars[i];
+                    if (obs.userData.isInverse) {
+                        obs.position.z += obs.userData.speed; // 左侧逆向车：迎面开来
+                    } else {
+                        obs.position.z -= obs.userData.speed; // 右侧同向车：向前开
+                    }
+                    obs.userData.wheels.forEach(w => w.rotation.x -= 0.8);
+
+                    let dist = policeCar.position.distanceTo(obs.position);
+                    if (dist < 2.6) {
+                        let now = clock.getElapsedTime();
+                        if (now - lastCrashTime > 0.6) {
+                            playCrashSound();
+                            lastCrashTime = now;
+                            crashAnimTimer = 0.5; 
+                            
+                            lives -= 1;
+                            document.getElementById('lives').innerText = lives;
+
+                            if (lives <= 0) {
+                                isGameOver = true;
+                                document.getElementById('hint').innerText = "💥 Game Over: Too many crashes!";
+                                document.getElementById('hint').style.color = "#cc0000";
+                                alert("Game Over: You crashed 10 times!");
+                            }
+                        }
+                        policeSpeed *= 0.3; 
+                    }
+
+                    // 离屏清理：同向车被超越（在身后很远）或逆向车开过身后
+                    if (obs.position.z > policeCar.position.z + 40 || obs.position.z < policeCar.position.z - 200) {
+                        scene.remove(obs);
+                        obstacleCars.splice(i, 1);
+                    }
+                }
+
+                let wheelRotationDelta = policeSpeed * 2.0;
+                policeCar.userData.wheels.forEach(w => w.rotation.x -= wheelRotationDelta);
+                badCar.userData.wheels.forEach(w => w.rotation.x -= wheelRotationDelta);
+
+                sirenTimer += dt;
+                if (sirenTimer > 0.15) {
+                    sirenTimer = 0;
+                    sirenState = !sirenState;
+                    if (sirenRed && sirenBlue) {
+                        sirenRed.visible = sirenState;
+                        sirenBlue.visible = !sirenState;
+                    }
+                }
+
+                // Collect HD Chinese Words
+                for (let i = kanjiBlocks.length - 1; i >= 0; i--) {
+                    let block = kanjiBlocks[i];
+                    block.rotation.y += 0.02;
+
+                    let dist = policeCar.position.distanceTo(block.position);
+                    if (dist < 2.8) {
+                        score += 10;
+                        wordCount += 1;
+                        document.getElementById('score').innerText = score;
+                        document.getElementById('wordCount').innerText = wordCount;
+                        
+                        let spokenWord = block.userData.word;
+                        playWinSound();                  
+                        speakChineseWord(spokenWord); 
+                        showKanjiPopup(spokenWord); 
+
+                        scene.remove(block);
+                        kanjiBlocks.splice(i, 1);
+
+                        // 当成功识别 10 个词汇时胜利并自动进入下一关
+                        if (wordCount >= 10 && !isLevelTransitioning) {
+                            isLevelTransitioning = true;
+                            isGameOver = true;
+                            
+                            document.getElementById('modalTitle').innerText = "🏆 闯关成功！";
+                            document.getElementById('modalSubtitle').innerText = "Level Cleared!";
+                            document.getElementById('modalDesc').innerText = "Awesome! Auto-advancing to next lesson...";
+                            document.getElementById('modalBox').style.display = 'block';
+
+                            setTimeout(() => {
+                                autoAdvanceToNextLevel();
+                            }, 1500);
+                        }
+                    } 
+                    else if (block.position.z > policeCar.position.z + 10) {
+                        scene.remove(block);
+                        kanjiBlocks.splice(i, 1);
+                    }
+                }
+
+                document.getElementById('speed').innerText = Math.round(policeSpeed * 180); 
+
+                let targetCameraX = policeCar.position.x * 0.4;
+                let targetCameraY = policeCar.position.y + 11;
+                let targetCameraZ = policeCar.position.z + 13;
+                
+                camera.position.x += (targetCameraX - camera.position.x) * 0.1;
+                camera.position.y += (targetCameraY - camera.position.y) * 0.1;
+                camera.position.z += (targetCameraZ - camera.position.z) * 0.1;
+                
+                camera.lookAt(policeCar.position.x, policeCar.position.y, policeCar.position.z - 4);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
