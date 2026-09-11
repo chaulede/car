@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Chinese Learning Police Chase - Two-Way Traffic</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chinese Learning Police Chase - iPad Touch Supported</title>
     <style>
         body {
             margin: 0;
@@ -10,6 +11,7 @@
             background-color: #558833;
             font-family: Arial, sans-serif;
             user-select: none;
+            -webkit-user-select: none;
         }
         /* 左侧主 UI 面板 */
         #ui {
@@ -25,6 +27,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             border-left: 4px solid #0055ff;
             width: 280px;
+            z-index: 500;
         }
         #ui div {
             margin-bottom: 6px;
@@ -79,15 +82,62 @@
 
         #instructions {
             position: absolute;
-            bottom: 20px;
+            bottom: 120px;
             width: 100%;
             text-align: center;
             color: #fff;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
             text-shadow: 1px 1px 3px black;
             pointer-events: none;
+            z-index: 500;
         }
+
+        /* iPad 触屏虚拟按键面板 */
+        #touchControls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 30px;
+            box-sizing: border-box;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .touch-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        .touch-btn {
+            width: 75px;
+            height: 75px;
+            background: rgba(0, 85, 255, 0.75);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            outline: none;
+            touch-action: manipulation;
+        }
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(0, 50, 180, 0.95);
+            transform: scale(0.92);
+        }
+        #btnBrake {
+            background: rgba(204, 0, 0, 0.75);
+        }
+        #btnBrake:active {
+            background: rgba(150, 0, 0, 0.95);
+        }
+
         /* 右侧汉字学习卡片：精确定位在屏幕右侧正中央 */
         #kanjiPopup {
             display: none;
@@ -152,7 +202,7 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
             text-align: center;
             border: 5px solid #ffaa00;
-            z-index: 1000;
+            z-index: 2000;
             pointer-events: none;
             max-width: 450px;
         }
@@ -211,7 +261,19 @@
         <p id="modalDesc">Auto-advancing to next lesson...</p>
     </div>
 
-    <div id="instructions">Controls: [W / S or Up / Down] Accelerate / Brake | [A / D or Left / Right] Change Lanes</div>
+    <div id="instructions">Controls: [W / S / A / D] or iPad Touch Buttons below</div>
+
+    <!-- iPad 触屏虚拟按键布局 -->
+    <div id="touchControls">
+        <div class="touch-group">
+            <button class="touch-btn" id="btnLeft">◀</button>
+            <button class="touch-btn" id="btnRight">▶</button>
+        </div>
+        <div class="touch-group">
+            <button class="touch-btn" id="btnBrake">S</button>
+            <button class="touch-btn" id="btnAccel">W</button>
+        </div>
+    </div>
 
     <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -431,6 +493,7 @@
 
         window.addEventListener('keydown', () => initAudio(), { once: true });
         window.addEventListener('click', () => initAudio(), { once: true });
+        window.addEventListener('touchstart', () => initAudio(), { once: true });
 
         // --- 1. Scene & Environment Setup ---
         const scene = new THREE.Scene();
@@ -584,22 +647,19 @@
             const col = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
             const obsGroup = createDetailedCar(null, col, false);
             
-            // 随机分配车道：右侧车道 (+3.5) 或 左侧车道 (-3.5)
             const isLeftLane = Math.random() < 0.5;
             const laneX = isLeftLane ? -3.5 : 3.5;
 
             if (isLeftLane) {
-                // 左侧车道：逆向行驶（迎面开来）
                 obsGroup.position.set(laneX, 0, policeCar.position.z - 120 - Math.random() * 50);
-                obsGroup.rotation.y = Math.PI; // 车头朝向后方（迎面朝警车开来）
+                obsGroup.rotation.y = Math.PI; 
                 obsGroup.userData.isInverse = true;
-                obsGroup.userData.speed = 0.5 + Math.random() * 0.3; // 迎面车速较快
+                obsGroup.userData.speed = 0.5 + Math.random() * 0.3; 
             } else {
-                // 右侧车道：同向行驶（向前开，可超越）
                 obsGroup.position.set(laneX, 0, policeCar.position.z - 120 - Math.random() * 50);
-                obsGroup.rotation.y = 0; // 车头朝向前方
+                obsGroup.rotation.y = 0; 
                 obsGroup.userData.isInverse = false;
-                obsGroup.userData.speed = 0.35 + Math.random() * 0.2; // 同向车速
+                obsGroup.userData.speed = 0.35 + Math.random() * 0.2; 
             }
 
             scene.add(obsGroup);
@@ -647,7 +707,7 @@
 
         setInterval(spawnKanjiBlock, 1800);
 
-        // --- 6. Controls & Game Main Loop ---
+        // --- 6. Controls & Game Main Loop (支持键盘与 iPad 触屏按钮) ---
         const keys = { w: false, s: false, a: false, d: false };
         let policeSpeed = 0;       
         const maxSpeed = 0.85;     
@@ -662,23 +722,51 @@
         let sirenTimer = 0;
         let sirenState = true;
 
+        // 键盘事件监听
         window.addEventListener('keydown', (e) => {
             if (document.activeElement.id === 'chatInput') return;
-            handleKey(e, true);
+            handleKey(e.key.toLowerCase(), true);
         });
         window.addEventListener('keyup', (e) => {
             if (document.activeElement.id === 'chatInput') return;
-            handleKey(e, false);
+            handleKey(e.key.toLowerCase(), false);
         });
 
-        function handleKey(e, isDown) {
-            switch(e.key.toLowerCase()) {
+        function handleKey(key, isDown) {
+            switch(key) {
                 case 'w': case 'arrowup': keys.w = isDown; break;
                 case 's': case 'arrowdown': keys.s = isDown; break;
                 case 'a': case 'arrowleft': keys.a = isDown; break;
                 case 'd': case 'arrowright': keys.d = isDown; break;
             }
         }
+
+        // iPad 触屏虚拟按键事件绑定
+        function bindTouchButton(elementId, keyName) {
+            const btn = document.getElementById(elementId);
+            if (!btn) return;
+
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys[keyName] = true;
+                btn.classList.add('active');
+                initAudio();
+            });
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys[keyName] = false;
+                btn.classList.remove('active');
+            });
+            // 兼容鼠标点击测试
+            btn.addEventListener('mousedown', () => { keys[keyName] = true; btn.classList.add('active'); initAudio(); });
+            btn.addEventListener('mouseup', () => { keys[keyName] = false; btn.classList.remove('active'); });
+            btn.addEventListener('mouseleave', () => { keys[keyName] = false; btn.classList.remove('active'); });
+        }
+
+        bindTouchButton('btnLeft', 'a');
+        bindTouchButton('btnRight', 'd');
+        bindTouchButton('btnAccel', 'w');
+        bindTouchButton('btnBrake', 's');
 
         let clock = new THREE.Clock();
 
@@ -714,13 +802,11 @@
                     if (now - lastCrashTime > 0.5) {
                         playCrashSound();
                         lastCrashTime = now;
-                        crashAnimTimer = 0.4; // 触发撞击震动动画
+                        crashAnimTimer = 0.4; 
                         
-                        // 撞击时红车被向前撞飞加速，拉开一段距离
                         badCarTargetOffset += 6; 
                         if (badCarTargetOffset > 30) badCarTargetOffset = 30;
 
-                        // 警车受到轻微反弹减速
                         policeSpeed *= 0.5;
                     }
                 } else {
@@ -759,9 +845,9 @@
                 for (let i = obstacleCars.length - 1; i >= 0; i--) {
                     let obs = obstacleCars[i];
                     if (obs.userData.isInverse) {
-                        obs.position.z += obs.userData.speed; // 左侧逆向车：迎面开来
+                        obs.position.z += obs.userData.speed; 
                     } else {
-                        obs.position.z -= obs.userData.speed; // 右侧同向车：向前开
+                        obs.position.z -= obs.userData.speed; 
                     }
                     obs.userData.wheels.forEach(w => w.rotation.x -= 0.8);
 
@@ -786,7 +872,6 @@
                         policeSpeed *= 0.3; 
                     }
 
-                    // 离屏清理：同向车被超越（在身后很远）或逆向车开过身后
                     if (obs.position.z > policeCar.position.z + 40 || obs.position.z < policeCar.position.z - 200) {
                         scene.remove(obs);
                         obstacleCars.splice(i, 1);
